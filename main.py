@@ -18,7 +18,7 @@ from google import genai  # type: ignore[reportMissingImports]
 from google.genai import types  # type: ignore[reportMissingImports]
 
 from app_config import get_app_config_value
-from ui import JarvisUI
+from web_ui import JarvisUI
 from memory.memory_manager import load_memory, update_memory, delete_memory, format_memory_for_prompt
 from actions.open_app import open_app
 from actions.sys_info  import sys_info
@@ -1043,7 +1043,11 @@ def main():
     wake_listener = WakeGestureListener(on_wake=ui.wake_up)
     wake_listener.start()
 
-    ui.root.mainloop()
+    try:
+        ui.root.mainloop()
+    finally:
+        wake_listener.stop()
+        ui.shutdown()
 
 
 if __name__ == "__main__":
