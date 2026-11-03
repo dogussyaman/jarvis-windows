@@ -1,6 +1,7 @@
 venv/
 __pycache__/
 *.pyc
+*.tsbuildinfo
 frontend/node_modules/
 .DS_Store
 .vscode/

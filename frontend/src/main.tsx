@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
-  Activity, AudioLines, Bot, Check, ChevronDown, CircleAlert, Cpu, HardDrive,
-  History, KeyRound, MessageSquare, Mic, MicOff, Minus, Pause, Play,
+  Activity, AudioLines, Battery, Bot, Check, ChevronDown, CircleAlert, CloudSun, Cpu, HardDrive,
+  History, KeyRound, MessageSquare, Mic, MicOff, Pause, Play,
   Radio, SendHorizontal, Settings2, Sparkles, Volume2, X,
 } from "lucide-react";
 import "./styles.css";
@@ -20,6 +20,7 @@ type JarvisState = {
   volume: number;
   uptime: number;
   stats: { cpu: number; ram: number; disk: number; battery: number | null };
+  weather: { city: string; temperature: string; details: string[] };
   focusPanel: string;
   userActive: boolean;
   logs: LogEntry[];
@@ -35,8 +36,6 @@ type JarvisApi = {
   toggle_effects: () => Promise<boolean>;
   set_volume: (value: number) => Promise<{ ok: boolean; error?: string }>;
   save_api_settings: (gemini: string, youtube: string, handle: string) => Promise<{ ok: boolean; error?: string }>;
-  minimize: () => Promise<void>;
-  close_window: () => Promise<void>;
 };
 
 declare global {
@@ -153,10 +152,8 @@ function App() {
     <main className="workspace">
       <header className="topbar">
         <div className="breadcrumbs"><span>Jarvis</span><span className="crumb-divider">/</span><strong>{showLogs ? "Tanılama kayıtları" : "Asistan"}</strong></div>
-        <div className="topbar-right"><span className="date-label">{dateLabel}</span>
+        <div className="topbar-right"><span className="date-label">{dateLabel}</span><span className={`time-label ${state?.focusPanel === "time" ? "focus-time" : ""}`}>{new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
           <span className={`status-pill ${status.toLowerCase()}`}><i />{statusLabel}</span>
-          <button className="window-button" aria-label="Pencereyi küçült" onClick={() => void bridge()?.minimize()}><Minus size={16} /></button>
-          <button className="window-button close-window" aria-label="Uygulamayı kapat" onClick={() => void bridge()?.close_window()}><X size={16} /></button>
         </div>
       </header>
 
@@ -167,12 +164,13 @@ function App() {
         </div>) : <div className="empty-state"><Activity size={24} /><strong>Henüz kayıt yok</strong><span>Önemli sistem olayları burada görünür.</span></div>}</div>
       </section> : <section className="dashboard">
         <div className="page-heading"><div><div className="eyebrow">KİŞİSEL ASİSTANIN</div><h1>Merhaba Doğuş<span className="heading-period">.</span></h1><p>Bugün senin için ne yapabilirim?</p></div>
-          <button className="settings-button" onClick={() => setSettingsOpen(true)}><Settings2 size={16} />Ayarlar</button>
+          <div className="heading-actions"><div className={`weather-chip ${state.focusPanel === "weather" ? "focus-active" : ""}`}><span className="weather-icon"><CloudSun size={17} /></span><strong>{state.weather.temperature}</strong><span className="weather-copy"><b>{state.weather.city}</b><small>{state.weather.details[0] ?? "Güncel hava"}</small></span></div>
+            <button className="settings-button" onClick={() => setSettingsOpen(true)}><Settings2 size={16} />Ayarlar</button></div>
         </div>
 
-        <div className="dashboard-grid">
+        <div className={`dashboard-grid ${state.focusPanel === "system" ? "focus-system" : ""}`}>
           <div className="primary-column">
-            <section className={`core-card state-${status.toLowerCase()}`}>
+            <section className={`core-card state-${status.toLowerCase()} ${state.userActive ? "user-active" : ""}`}>
               <div className="core-card-head"><div className="core-title"><span className="core-title-icon"><Sparkles size={15} /></span><span>JARVIS ÇEKİRDEĞİ</span></div>
                 <span className="core-model"><span className="model-dot" /> GEMINI LIVE</span></div>
               <div className="orb-stage" aria-label={`Asistan durumu: ${statusLabel}`}>
@@ -196,6 +194,7 @@ function App() {
               <MetricCard icon={<Cpu size={16} />} label="İşlemci" value={state.stats.cpu} color="cyan" />
               <MetricCard icon={<Activity size={16} />} label="Bellek" value={state.stats.ram} color="violet" />
               <MetricCard icon={<HardDrive size={16} />} label="Disk" value={state.stats.disk} color="blue" />
+              <MetricCard icon={<Battery size={16} />} label="Pil" value={state.stats.battery} color="green" />
               <div className="metric-card uptime-card"><div className="metric-icon amber"><Radio size={16} /></div><div className="metric-info"><span>Çalışma süresi</span><strong>{formatUptime(state.uptime)}<small> saat</small></strong></div><div className="uptime-wave"><i /><i /><i /><i /><i /><i /><i /></div></div>
             </div>
           </div>
@@ -227,10 +226,10 @@ function App() {
   </div>;
 }
 
-function MetricCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number; color: string }) {
-  const safe = Math.max(0, Math.min(100, value || 0));
-  return <div className="metric-card"><div className={`metric-icon ${color}`}>{icon}</div><div className="metric-info"><span>{label}</span><strong>{Math.round(safe)}<small>%</small></strong></div>
-    <div className="metric-track"><i className={color} style={{ width: `${safe}%` }} /></div>
+function MetricCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: number | null; color: string }) {
+  const safe = Math.max(0, Math.min(100, value ?? 0));
+  return <div className="metric-card"><div className={`metric-icon ${color}`}>{icon}</div><div className="metric-info"><span>{label}</span><strong>{value === null ? "—" : <>{Math.round(safe)}<small>%</small></>}</strong></div>
+    {value !== null && <div className="metric-track"><i className={color} style={{ width: `${safe}%` }} /></div>}
   </div>;
 }
 

@@ -63,6 +63,7 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .crumb-divider { color: #4c596a; }
 .topbar-right { display: flex; align-items: center; gap: 10px; }
 .date-label { padding-right: 6px; color: #78869a; font-size: 9px; }
+.time-label { min-width: 40px; padding: 0 5px; color: #abb8c7; font: 600 10px "Segoe UI Semibold","Segoe UI",sans-serif; font-variant-numeric: tabular-nums; }.time-label.focus-time { color: var(--cyan); text-shadow: 0 0 12px rgba(105,220,230,.5); }
 .status-pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 9px; border: 1px solid rgba(104,213,162,.15); border-radius: 20px; color: #9be3bc; background: rgba(104,213,162,.07); font-size: 8px; font-weight: 700; letter-spacing: .035em; }
 .status-pill i { display: block; width: 5px; height: 5px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
 .status-pill.thinking,.status-pill.initialising { color: #e9c779; border-color: rgba(232,189,112,.16); background: rgba(232,189,112,.06); }
@@ -76,6 +77,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .page-heading h1 { margin: 0; color: #edf3f8; font: 700 23px/1.25 "Segoe UI Semibold","Segoe UI",sans-serif; letter-spacing: -.045em; }
 .heading-period { color: var(--cyan); }
 .page-heading p { margin: 6px 0 0; color: #8491a3; font-size: 10px; }
+.heading-actions { display: flex; align-items: center; gap: 9px; }
+.weather-chip { display: flex; align-items: center; gap: 8px; min-width: 151px; height: 35px; padding: 0 9px; border: 1px solid var(--line); border-radius: 8px; background: rgba(255,255,255,.018); transition: .2s ease; }
+.weather-chip.focus-active { border-color: rgba(105,220,230,.34); background: rgba(105,220,230,.07); box-shadow: 0 0 18px rgba(105,220,230,.06); }
+.weather-icon { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 7px; color: #8cc8f2; background: rgba(141,183,255,.08); }
+.weather-chip>strong { color: #e2eaf1; font: 600 12px "Segoe UI Semibold","Segoe UI",sans-serif; white-space: nowrap; }
+.weather-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }.weather-copy b { color: #adbac9; font-size: 7px; font-weight: 600; }.weather-copy small { max-width: 92px; overflow: hidden; color: #708095; font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
 .settings-button { display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 11px; border: 1px solid var(--line-strong); border-radius: 7px; background: #111a27; color: #bdc9d6; font-size: 9px; cursor: pointer; }
 .settings-button:hover { border-color: rgba(105,220,230,.34); color: #e6f7f7; }
 .dashboard-grid { display: grid; grid-template-columns: minmax(400px,1.06fr) minmax(340px,.94fr); gap: 15px; min-height: 550px; }
@@ -118,11 +125,12 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 @keyframes halo-pulse { 0%,100% { transform: scale(.94); opacity: .56; } 50% { transform: scale(1.06); opacity: 1; } }
 @keyframes core-breathe { 0%,100% { transform: rotate(45deg) scale(.98); } 50% { transform: rotate(45deg) scale(1.035); } }
 
-.metrics-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+.metrics-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
 .metric-card { position: relative; display: flex; align-items: center; gap: 9px; min-height: 63px; padding: 11px; overflow: hidden; }
 .metric-icon { display: grid; place-items: center; flex: 0 0 auto; width: 29px; height: 29px; border: 1px solid rgba(105,220,230,.14); border-radius: 8px; color: #7bdde3; background: rgba(105,220,230,.08); }
 .metric-icon.violet { color: #b69cf5; border-color: rgba(182,156,245,.15); background: rgba(182,156,245,.08); }
 .metric-icon.blue { color: #8db7ff; border-color: rgba(141,183,255,.16); background: rgba(141,183,255,.08); }
+.metric-icon.green { color: #7be0ae; border-color: rgba(104,213,162,.16); background: rgba(104,213,162,.08); }
 .metric-icon.amber { color: var(--amber); border-color: rgba(232,189,112,.15); background: rgba(232,189,112,.08); }
 .metric-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .metric-info>span { color: #8190a2; font-size: 8px; }
@@ -130,11 +138,13 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .metric-info small { color: #8896a7; font: 500 8px "Segoe UI",sans-serif; }
 .metric-track { position: absolute; right: 11px; bottom: 10px; left: 49px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.06); }
 .metric-track i { display: block; height: 100%; border-radius: inherit; background: var(--cyan); box-shadow: 0 0 8px rgba(105,220,230,.35); }
-.metric-track i.violet { background: #ab8ff1; box-shadow: 0 0 8px rgba(171,143,241,.3); }.metric-track i.blue { background: #7caeff; box-shadow: 0 0 8px rgba(124,174,255,.3); }
+.metric-track i.violet { background: #ab8ff1; box-shadow: 0 0 8px rgba(171,143,241,.3); }.metric-track i.blue { background: #7caeff; box-shadow: 0 0 8px rgba(124,174,255,.3); }.metric-track i.green { background: #68d5a2; box-shadow: 0 0 8px rgba(104,213,162,.3); }
 .uptime-wave { display: flex; align-items: center; gap: 3px; height: 25px; margin-left: auto; opacity: .77; }
 .uptime-wave i { display: block; width: 2px; height: 8px; border-radius: 2px; background: #e6bd70; animation: wave 1.2s ease-in-out infinite alternate; }
 .uptime-wave i:nth-child(2n) { height: 15px; animation-delay: .4s; }.uptime-wave i:nth-child(3n) { height: 11px; animation-delay: .7s; }
 @keyframes wave { to { transform: scaleY(.48); opacity: .5; } }
+.focus-system .metric-card { border-color: rgba(105,220,230,.25); box-shadow: 0 0 18px rgba(105,220,230,.055),inset 0 1px rgba(255,255,255,.025); }
+.user-active .orb-stage { filter: hue-rotate(-9deg) brightness(1.07); }
 
 .conversation-card { display: flex; flex-direction: column; min-width: 0; min-height: 520px; max-height: 100%; overflow: hidden; }
 .conversation-header { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; padding: 13px 14px; border-bottom: 1px solid var(--line); }
@@ -205,4 +215,5 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
   .dashboard,.logs-page { padding-right: 17px; padding-left: 17px; }
   .dashboard-grid { grid-template-columns: minmax(360px,1fr) minmax(315px,.9fr); gap: 11px; }
   .date-label { display: none; }
+  .weather-chip { min-width: 134px; }
 }

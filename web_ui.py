@@ -12,6 +12,7 @@ import psutil
 import webview
 
 from app_config import has_gemini_api_key, load_app_config, save_app_config
+from actions.weather import get_weather_summary
 from ui import SoundManager, VOICES
 
 
@@ -77,9 +78,11 @@ class JarvisUI:
         self._user_active_until = 0.0
         self._logs = deque(maxlen=160)
         self._debug_entries = deque(maxlen=160)
+        self._weather = {"city": "İstanbul", "temperature": "--", "details": ["Hava durumu yükleniyor"]}
         self._log_id = 0
         self._effects_active = None
         self._closing = False
+        threading.Thread(target=self._refresh_weather, daemon=True, name="JarvisWeather").start()
 
         self.on_text_command = None
         self.on_pause_toggle = None
@@ -113,6 +116,7 @@ class JarvisUI:
                 "volume": self._volume,
                 "uptime": max(0, int(now - self._started_at)),
                 "stats": stats,
+                "weather": dict(self._weather),
                 "focusPanel": self._focus_panel if self._focus_until > now else "",
                 "userActive": self._user_active_until > now,
                 "logs": list(self._logs),
@@ -198,13 +202,6 @@ class JarvisUI:
 
     def set_settings_open(self, is_open: bool):
         return bool(is_open)
-
-    def minimize(self):
-        if self.window:
-            self.window.minimize()
-
-    def close_window(self):
-        self.shutdown()
 
     # ---------- Compatibility methods called by JarvisLive ----------
     def wait_for_api_key(self):
@@ -294,6 +291,23 @@ class JarvisUI:
                     args=(enabled,),
                     daemon=True,
                 ).start()
+
+    def _refresh_weather(self):
+        try:
+            raw = get_weather_summary("Istanbul")
+            if " için hava durumu:" in raw:
+                city, body = raw.split(" için hava durumu:", 1)
+                details = [part.strip(" .") for part in body.split(",") if part.strip(" .")]
+                temperature = details[0].replace(" derece", "°C") if details else "--"
+                self._weather = {
+                    "city": city.strip().title(),
+                    "temperature": temperature,
+                    "details": details[1:] or ["Anlık veri hazır"],
+                }
+            else:
+                self._weather = {"city": "İstanbul", "temperature": "--", "details": ["Hava durumu alınamadı"]}
+        except Exception:
+            self._weather = {"city": "İstanbul", "temperature": "--", "details": ["Hava durumu alınamadı"]}
 
     def shutdown(self):
         if self._closing:
