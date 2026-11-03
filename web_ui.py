@@ -110,6 +110,7 @@ class JarvisUI:
                 "muted": self.muted,
                 "paused": self.paused,
                 "apiReady": self._api_key_ready,
+                "youtubeReady": bool(str(load_app_config().get("youtube_api_key", "") or "").strip()),
                 "voice": self._current_voice,
                 "voices": list(VOICES),
                 "effectsEnabled": self._sfx_on,
@@ -121,6 +122,8 @@ class JarvisUI:
                 "userActive": self._user_active_until > now,
                 "logs": list(self._logs),
                 "debugEntries": list(self._debug_entries),
+                "capabilities": dict(load_app_config().get("capabilities", {}) or {}),
+                "uiPreferences": dict(load_app_config().get("ui_preferences", {}) or {}),
             }
 
     # ---------- React actions ----------
@@ -199,6 +202,27 @@ class JarvisUI:
         if not was_ready:
             self.set_state("LISTENING")
         return {"ok": True}
+
+    def save_capabilities(self, capabilities: dict):
+        allowed = {
+            "system", "browser", "weather", "calendar", "reminders", "whatsapp",
+            "media", "screen", "youtube", "memory",
+        }
+        current = dict(load_app_config().get("capabilities", {}) or {})
+        for name, enabled in (capabilities or {}).items():
+            if name in allowed and isinstance(enabled, bool):
+                current[name] = enabled
+        save_app_config({"capabilities": current})
+        return {"ok": True, "capabilities": current}
+
+    def save_ui_preferences(self, theme: str, motion: str):
+        themes = {"stark", "graphite", "arc"}
+        motions = {"full", "reduced", "off"}
+        if theme not in themes or motion not in motions:
+            return {"ok": False, "error": "Görünüm ayarları geçersiz."}
+        preferences = {"theme": theme, "motion": motion}
+        save_app_config({"ui_preferences": preferences})
+        return {"ok": True, "preferences": preferences}
 
     def set_settings_open(self, is_open: bool):
         return bool(is_open)

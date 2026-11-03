@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import {
   Activity, AudioLines, Battery, Bot, Check, ChevronDown, CircleAlert, CloudSun, Cpu, HardDrive,
   History, KeyRound, MessageSquare, Mic, MicOff, Pause, Play,
-  Radio, SendHorizontal, Settings2, Sparkles, Volume2, X,
+  Radio, SendHorizontal, Settings2, Sparkles, Volume2, X, ShieldCheck, SlidersHorizontal,
 } from "lucide-react";
 import "./styles.css";
 
@@ -14,6 +14,7 @@ type JarvisState = {
   muted: boolean;
   paused: boolean;
   apiReady: boolean;
+  youtubeReady: boolean;
   voice: string;
   voices: string[];
   effectsEnabled: boolean;
@@ -25,6 +26,8 @@ type JarvisState = {
   userActive: boolean;
   logs: LogEntry[];
   debugEntries: DebugEntry[];
+  capabilities: Record<string, boolean>;
+  uiPreferences: { theme?: string; motion?: string };
 };
 
 type JarvisApi = {
@@ -36,6 +39,8 @@ type JarvisApi = {
   toggle_effects: () => Promise<boolean>;
   set_volume: (value: number) => Promise<{ ok: boolean; error?: string }>;
   save_api_settings: (gemini: string, youtube: string, handle: string) => Promise<{ ok: boolean; error?: string }>;
+  save_capabilities: (capabilities: Record<string, boolean>) => Promise<{ ok: boolean }>;
+  save_ui_preferences: (theme: string, motion: string) => Promise<{ ok: boolean; error?: string }>;
 };
 
 declare global {
@@ -64,6 +69,8 @@ function App() {
   const [message, setMessage] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showLogs, setShowLogs] = useState(false);
+  const [page, setPage] = useState<"assistant" | "logs" | "capabilities">("assistant");
+  const [intro, setIntro] = useState(true);
   const [toast, setToast] = useState("");
   const logEnd = useRef<HTMLDivElement>(null);
 
@@ -87,6 +94,17 @@ function App() {
       window.removeEventListener("pywebviewready", start);
     };
   }, [refresh]);
+
+  useEffect(() => {
+    if (!state) return;
+    document.documentElement.dataset.theme = state.uiPreferences?.theme ?? "stark";
+    document.documentElement.dataset.motion = state.uiPreferences?.motion ?? "full";
+    if (state.uiPreferences?.motion === "off") setIntro(false);
+    else {
+      const timer = window.setTimeout(() => setIntro(false), state.uiPreferences?.motion === "reduced" ? 700 : 1900);
+      return () => window.clearTimeout(timer);
+    }
+  }, [state?.uiPreferences?.theme, state?.uiPreferences?.motion, !!state]);
 
   useEffect(() => {
     logEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -127,11 +145,14 @@ function App() {
       </div>
 
       <div className="side-section-label">ÇALIŞMA ALANI</div>
-      <button className={`nav-item ${!showLogs ? "active" : ""}`} onClick={() => setShowLogs(false)}>
+      <button className={`nav-item ${page === "assistant" ? "active" : ""}`} onClick={() => { setPage("assistant"); setShowLogs(false); }}>
         <MessageSquare size={17} /><span>Asistan</span><span className="nav-live" />
       </button>
-      <button className={`nav-item ${showLogs ? "active" : ""}`} onClick={() => setShowLogs(true)}>
+      <button className={`nav-item ${page === "logs" ? "active" : ""}`} onClick={() => { setPage("logs"); setShowLogs(true); }}>
         <History size={17} /><span>Tanılama kayıtları</span>
+      </button>
+      <button className={`nav-item ${page === "capabilities" ? "active" : ""}`} onClick={() => { setPage("capabilities"); setShowLogs(false); }}>
+        <ShieldCheck size={17} /><span>Yetkiler</span>
       </button>
 
       <div className="sidebar-spacer" />
@@ -151,18 +172,18 @@ function App() {
 
     <main className="workspace">
       <header className="topbar">
-        <div className="breadcrumbs"><span>Jarvis</span><span className="crumb-divider">/</span><strong>{showLogs ? "Tanılama kayıtları" : "Asistan"}</strong></div>
+        <div className="breadcrumbs"><span>Jarvis</span><span className="crumb-divider">/</span><strong>{page === "logs" ? "Tanılama kayıtları" : page === "capabilities" ? "Yetkiler" : "Asistan"}</strong></div>
         <div className="topbar-right"><span className="date-label">{dateLabel}</span><span className={`time-label ${state?.focusPanel === "time" ? "focus-time" : ""}`}>{new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</span>
           <span className={`status-pill ${status.toLowerCase()}`}><i />{statusLabel}</span>
         </div>
       </header>
 
-      {showLogs ? <section className="logs-page">
+      {page === "logs" ? <section className="logs-page">
         <div className="page-heading"><div><div className="eyebrow">SİSTEM İZLEME</div><h1>Tanılama kayıtları</h1><p>Jarvis’in çalışma durumu ve hata kayıtları.</p></div><span className="log-count">{state.debugEntries.length} kayıt</span></div>
         <div className="log-table">{state.debugEntries.length ? state.debugEntries.slice().reverse().map((entry, i) => <div className="debug-row" key={`${entry.time}-${i}`}>
           <span className="debug-time">{entry.time}</span><span className={`debug-level ${entry.level.toLowerCase()}`}>{entry.level}</span><span>{entry.text}</span>
         </div>) : <div className="empty-state"><Activity size={24} /><strong>Henüz kayıt yok</strong><span>Önemli sistem olayları burada görünür.</span></div>}</div>
-      </section> : <section className="dashboard">
+      </section> : page === "capabilities" ? <CapabilitiesPage state={state} onToast={tell} /> : <section className="dashboard">
         <div className="page-heading"><div><div className="eyebrow">KİŞİSEL ASİSTANIN</div><h1>Merhaba Doğuş<span className="heading-period">.</span></h1><p>Bugün senin için ne yapabilirim?</p></div>
           <div className="heading-actions"><div className={`weather-chip ${state.focusPanel === "weather" ? "focus-active" : ""}`}><span className="weather-icon"><CloudSun size={17} /></span><strong>{state.weather.temperature}</strong><span className="weather-copy"><b>{state.weather.city}</b><small>{state.weather.details[0] ?? "Güncel hava"}</small></span></div>
             <button className="settings-button" onClick={() => setSettingsOpen(true)}><Settings2 size={16} />Ayarlar</button></div>
@@ -222,6 +243,7 @@ function App() {
     <footer className="app-footer"><span><span className="footer-dot" />JARVIS DESKTOP</span><span>Yerel oturum <b>·</b> {state.voice} <b>·</b> {state.effectsEnabled ? "Ses efektleri açık" : "Sessiz mod"}</span></footer>
 
     {settingsOpen && <SettingsModal state={state} onClose={() => setSettingsOpen(false)} onToast={tell} />}
+    {intro && state.uiPreferences?.motion !== "off" && <div className="intro-overlay" aria-hidden="true"><div className="intro-grid" /><div className="intro-mark"><div className="intro-ring" /><div className="intro-core"><AudioLines size={30} /></div></div><strong>J.A.R.V.I.S</strong><span>PERSONAL SYSTEM ONLINE</span><i /></div>}
     {toast && <div className="toast"><Check size={16} />{toast}</div>}
   </div>;
 }
@@ -231,6 +253,46 @@ function MetricCard({ icon, label, value, color }: { icon: React.ReactNode; labe
   return <div className="metric-card"><div className={`metric-icon ${color}`}>{icon}</div><div className="metric-info"><span>{label}</span><strong>{value === null ? "—" : <>{Math.round(safe)}<small>%</small></>}</strong></div>
     {value !== null && <div className="metric-track"><i className={color} style={{ width: `${safe}%` }} /></div>}
   </div>;
+}
+
+const capabilityItems = [
+  { id: "system", title: "Windows ve sistem bilgisi", detail: "Uygulama açma, CPU/RAM/pil bilgisi ve kabuk komutları.", status: "Windows yerel erişimi" },
+  { id: "browser", title: "Tarayıcı kontrolü", detail: "Web sayfası açma ve web araması.", status: "Tarayıcı erişimi" },
+  { id: "weather", title: "Hava durumu", detail: "Seçilen konum için güncel hava bilgisi alma.", status: "İnternet erişimi" },
+  { id: "calendar", title: "Takvim", detail: "Etkinlik için Google Calendar sayfası açılır; takvim kayıtları doğrudan okunup yazılmaz.", status: "Web sayfası kısayolu" },
+  { id: "reminders", title: "Hatırlatıcılar", detail: "Microsoft To Do açılır; hatırlatıcılar doğrudan okunup yazılmaz.", status: "Web sayfası kısayolu" },
+  { id: "whatsapp", title: "WhatsApp", detail: "WhatsApp üzerinden mesaj gönderme ve kişi kaydetme araçları.", status: "WhatsApp erişimi" },
+  { id: "media", title: "Medya kontrolü", detail: "Müzik veya video arama ve oynatma başlatma.", status: "Uygulama/tarayıcı erişimi" },
+  { id: "screen", title: "Ekran analizi", detail: "Ekran görüntüsü Gemini ile analiz edilir.", status: "Gemini bağlantısı gerekli" },
+  { id: "youtube", title: "YouTube kanal bilgileri", detail: "YouTube kanal raporu ve istatistikleri.", status: "YouTube API anahtarı gerekli" },
+  { id: "memory", title: "Yerel hafıza", detail: "Jarvis’in yerel notlarını kaydetme ve silme.", status: "Bu cihazda saklanır" },
+];
+
+function CapabilitiesPage({ state, onToast }: { state: JarvisState; onToast: (text: string) => void }) {
+  const [busy, setBusy] = useState("");
+  const toggle = async (id: string) => {
+    const enabled = state.capabilities?.[id] !== false;
+    setBusy(id);
+    try {
+      const result = await bridge()?.save_capabilities({ [id]: !enabled });
+      if (result?.ok) onToast(`${capabilityItems.find((item) => item.id === id)?.title}: ${enabled ? "kapatıldı" : "açıldı"}`);
+      else onToast("Yetki ayarı kaydedilemedi.");
+    } catch { onToast("Python bağlantısı kurulamadı."); }
+    finally { setBusy(""); }
+  };
+  return <section className="capabilities-page">
+    <div className="page-heading"><div><div className="eyebrow">ERİŞİM DENETİMİ</div><h1>Jarvis’in yetkileri<span className="heading-period">.</span></h1><p>Jarvis’in kullanabileceği araçları görüntüle ve istemediklerini kapat.</p></div><div className="permission-summary"><ShieldCheck size={17} /><span>{capabilityItems.filter((item) => state.capabilities?.[item.id] !== false).length} / {capabilityItems.length} açık</span></div></div>
+    <div className="capability-grid">{capabilityItems.map((item) => {
+      const enabled = state.capabilities?.[item.id] !== false;
+      const connected = item.id === "screen" ? state.apiReady : item.id === "youtube" ? state.youtubeReady : item.id === "calendar" || item.id === "reminders" ? false : true;
+      const status = item.id === "screen" ? (state.apiReady ? "Gemini hazır" : "Gemini anahtarı eksik") : item.id === "youtube" ? (state.youtubeReady ? "YouTube API hazır" : "YouTube anahtarı ayarlarda yönetilir") : item.id === "calendar" || item.id === "reminders" ? "Web sayfası kısayolu · doğrudan senkronizasyon yok" : item.status;
+      return <article className={`capability-card ${enabled ? "enabled" : "disabled"}`} key={item.id}>
+        <div className="capability-card-head"><span className={`capability-icon ${connected ? "connected" : "unconfigured"}`}><ShieldCheck size={17} /></span><button className={`toggle-switch ${enabled ? "on" : ""}`} aria-label={`${item.title} yetkisini ${enabled ? "kapat" : "aç"}`} disabled={busy === item.id} onClick={() => void toggle(item.id)}><i /></button></div>
+        <strong>{item.title}</strong><p>{item.detail}</p><div className="capability-foot"><span className={`connection-dot ${connected ? "online" : "offline"}`} />{enabled ? status : "Bu yetenek devre dışı"}</div>
+      </article>;
+    })}</div>
+    <div className="capability-note"><CircleAlert size={16} /><span>Yetkiler uygulama içi araç çağrılarını açıp kapatır. Windows, Gemini veya bağlı web servislerinin kendi izinleri ayrıca geçerlidir.</span></div>
+  </section>;
 }
 
 function ChatBubble({ entry }: { entry: LogEntry }) {
@@ -249,6 +311,16 @@ function SettingsModal({ state, onClose, onToast }: { state: JarvisState; onClos
   const [handle, setHandle] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [theme, setTheme] = useState(state.uiPreferences?.theme ?? "stark");
+  const [motion, setMotion] = useState(state.uiPreferences?.motion ?? "full");
+
+  const updateLook = async (nextTheme: string, nextMotion: string) => {
+    setTheme(nextTheme); setMotion(nextMotion);
+    document.documentElement.dataset.theme = nextTheme;
+    document.documentElement.dataset.motion = nextMotion;
+    const result = await bridge()?.save_ui_preferences(nextTheme, nextMotion);
+    if (!result?.ok) onToast(result?.error ?? "Görünüm ayarı kaydedilemedi.");
+  };
 
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -296,6 +368,10 @@ function SettingsModal({ state, onClose, onToast }: { state: JarvisState; onClos
         <div className="settings-section effects-section"><div className="settings-section-title"><Volume2 size={16} /><div><strong>Ses efektleri</strong><span>Arka plan ve etkileşim sesleri.</span></div></div>
           <button className={`toggle-switch ${state.effectsEnabled ? "on" : ""}`} aria-label="Ses efektlerini aç veya kapat" onClick={() => void bridge()?.toggle_effects()}><i /></button>
           <div className="volume-row"><span>Düzey</span><input type="range" min="0" max="100" value={Math.round(state.volume * 100)} onChange={(event) => void bridge()?.set_volume(Number(event.target.value) / 100)} /><strong>{Math.round(state.volume * 100)}%</strong></div>
+        </div>
+        <div className="settings-section"><div className="settings-section-title"><SlidersHorizontal size={16} /><div><strong>Arayüzü özelleştir</strong><span>HUD teması, açılış ekranı ve hareket düzeyi.</span></div></div>
+          <label className="preference-label">Tema<select value={theme} onChange={(event) => void updateLook(event.target.value, motion)}><option value="stark">Stark — Kızıl / Altın</option><option value="graphite">Grafit — Koyu / Kırmızı</option><option value="arc">Arc — Koyu / Buz mavisi</option></select></label>
+          <label className="preference-label">Animasyon<select value={motion} onChange={(event) => void updateLook(theme, event.target.value)}><option value="full">Tam — açılış animasyonu dahil</option><option value="reduced">Azaltılmış hareket</option><option value="off">Kapalı</option></select></label>
         </div>
       </div>
       <footer className="modal-footer"><span><Check size={14} /> Değişiklikler bu cihaza kaydedilir</span><button onClick={onClose} disabled={!state.apiReady}>Tamam</button></footer>
