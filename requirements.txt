@@ -7,3 +7,4 @@ Pillow
 requests
 pyperclip
 mss
+pywebview>=6.2,<7

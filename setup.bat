@@ -33,14 +33,26 @@ echo [*] Paketler yukleniyor...
 pip install --upgrade pip -q
 pip install -r requirements.txt -q
 
-REM Fontları Windows font dizinine kur (yönetici gerekebilir)
-if exist "Fonts" (
-    echo [*] Grift fontlari kuruluyor...
-    for %%f in (Fonts\*.ttf) do (
-        copy "%%f" "%WINDIR%\Fonts\" >nul 2>&1
-    )
-    echo [OK] Fontlar kuruldu (basarisiz olursa Fonts klasorunden elle yukle)
+REM React arayuzunun Edge WebView2 calisma zamanini kontrol et
+set "WEBVIEW2_FOUND="
+for /d %%D in ("%ProgramFiles(x86)%\Microsoft\EdgeWebView\Application\*") do (
+    if exist "%%~D\msedgewebview2.exe" set "WEBVIEW2_FOUND=1"
 )
+for /d %%D in ("%ProgramFiles%\Microsoft\EdgeWebView\Application\*") do (
+    if exist "%%~D\msedgewebview2.exe" set "WEBVIEW2_FOUND=1"
+)
+for /d %%D in ("%LOCALAPPDATA%\Microsoft\EdgeWebView\Application\*") do (
+    if exist "%%~D\msedgewebview2.exe" set "WEBVIEW2_FOUND=1"
+)
+if not defined WEBVIEW2_FOUND (
+    echo [HATA] Microsoft Edge WebView2 Runtime bulunamadi.
+    echo JARVIS'in React masaustu arayuzu icin WebView2 gereklidir.
+    echo Kurulum sayfasi: https://developer.microsoft.com/microsoft-edge/webview2/
+    start "" "https://developer.microsoft.com/microsoft-edge/webview2/"
+    pause
+    exit /b 1
+)
+echo [OK] Microsoft Edge WebView2 Runtime bulundu.
 
 echo.
 echo ╔══════════════════════════════════════╗
@@ -50,6 +62,7 @@ echo.
 echo JARVIS'i baslatmak icin:
 echo   venv\Scripts\activate.bat
 echo   python main.py
+echo Node.js, hazir React arayuzunu calistirmak icin gerekmez.
 echo.
 set /p choice="Simdi baslatilsin mi? (e/h): "
 if /i "%choice%"=="e" python main.py

@@ -52,20 +52,14 @@ VS Code'da:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ADIM 4 — Paketleri Kur
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-VS Code'da terminali aç (Ctrl+J) ve şunu yapıştır:
+Proje klasöründeki setup.bat dosyasına çift tıkla. Python paketleri kurulup
+React arayüzünü göstermek için gereken Microsoft Edge WebView2 kontrol edilir.
 
-1:
-python -m pip install google-genai psutil Pillow requests pyperclip mss SpeechRecognition
-İlk kod çaluşmazsa alternatif versiyonu: py -3.12 -m pip install google-genai psutil Pillow requests pyperclip mss SpeechRecognition PyAudio
+WebView2 eksikse setup.bat resmi Microsoft kurulum sayfasını açar. Runtime'ı
+kurduktan sonra setup.bat dosyasını tekrar çalıştır.
 
-Kurulum birkaç dakika sürebilir, bekle.
-
-2:
-python -m pip install pipwin
-
-3:
-python -m pipwin install pyaudio
-3. Kod hata verirse bir sonraki aşamaya geçip çalıştırmayı deneyin.
+Not: Hazır React arayüzü repoda derlenmiş olarak gelir. Jarvis'i kullanmak için
+Node.js veya npm kurman gerekmez.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ADIM 5 — API Anahtarını Al
@@ -124,10 +118,9 @@ PyAudio kurulumu hata verdi
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GELİŞTİRME MODU — KAYDETTİKÇE YENİLE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Arayüzü düzenlerken önce normal JARVIS penceresini kapat.
-Proje klasöründeki dev.bat dosyasını çalıştır.
-Bir .py dosyasını kaydettiğinde uygulama otomatik yeniden başlar.
-Geliştirme modunu kapatmak için açılan terminalde Ctrl+C'ye bas.
-
-Not: Bu yöntem React'teki gibi pencereyi açık tutarak yenilemez;
-uygulamayı yeniden başlattığı için geçici durum sıfırlanır.
+React arayüzünü geliştirmek için Node.js 22.12 veya üstü kurulu olmalı. Proje klasöründeki
+dev.bat dosyasını çalıştır. İlk kullanımda frontend paketleri yüklenir;
+sonrasında React değişiklikleri açık Jarvis penceresine otomatik yansır.
+Python dosyaları değiştiğinde uygulama otomatik yeniden başlar.
+Geliştirme modunu kapatmak için Python terminalinde Ctrl+C'ye bas ve
+React geliştirme sunucusu penceresini kapat.
