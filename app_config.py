@@ -15,6 +15,8 @@ DEFAULT_CONFIG = {
     "voice": "Charon",
     "youtube_api_key": "",
     "youtube_channel_handle": "",
+    "capabilities": {"system": True, "browser": True, "weather": True},
+    "ui_preferences": {"theme": "stark", "motion": "full"},
 }
 
 

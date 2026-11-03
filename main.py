@@ -658,6 +658,24 @@ class JarvisLive:
         print(f"[JARVIS] 🔧 {name} {args}")
         self.ui.set_state("THINKING")
 
+        capability_for_tool = {
+            "open_app": "system", "sys_info": "system", "shell_run": "system",
+            "browser_control": "browser", "get_weather": "weather", "get_calendar_events": "calendar",
+            "add_calendar_event": "calendar", "delete_calendar_event": "calendar",
+            "get_reminders": "reminders", "add_reminder": "reminders",
+            "send_whatsapp_message": "whatsapp", "save_whatsapp_contact": "whatsapp",
+            "play_media": "media", "analyze_screen": "screen",
+            "get_youtube_channel_report": "youtube", "save_memory": "memory",
+            "delete_memory": "memory",
+        }
+        capability = capability_for_tool.get(name)
+        if capability and not bool(get_app_config_value("capabilities", {}).get(capability, True)):
+            result = f"Bu işlem Doğuş tarafından yetki ayarlarından kapatılmış: {capability}."
+            self.ui.write_log(f"SYS: Yetki nedeniyle işlem engellendi ({name}).")
+            if not self.ui.muted:
+                self.ui.set_state("LISTENING")
+            return types.FunctionResponse(id=fc.id, name=name, response={"result": result})
+
         loop   = asyncio.get_event_loop()
         result = "Tamam."
         had_exception = False
