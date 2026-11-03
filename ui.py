@@ -22,14 +22,14 @@ MODEL_BADGE = "VOICE CORE · Windows"
 
 # ── Renk paleti ──────────────────────────────────────────────────────────────
 C_BG      = "#07111f"
-C_PRI     = "#32d7f5"
-C_ORG     = "#ffb454"
+C_PRI     = "#55d8e8"
+C_ORG     = "#f1b86a"
 C_ORG2    = "#ffd083"
-C_MID     = "#39718a"
-C_DIM     = "#18364b"
+C_MID     = "#42677d"
+C_DIM     = "#1b3346"
 C_DIMMER  = "#0b1c2c"
-C_TEXT    = "#d8f3ff"
-C_PANEL   = "#0b1a2a"
+C_TEXT    = "#e1edf4"
+C_PANEL   = "#0d1b29"
 C_GREEN   = "#42e0b4"
 C_RED     = "#ff647c"
 C_MUTED   = "#c84970"
@@ -48,22 +48,21 @@ ORB_COLORS = {
 }
 
 # ── Boyutlar ─────────────────────────────────────────────────────────────────
-W_TARGET = 2200
-H_TARGET = 1320
-LEFT_W_T = 360
-RIGHT_W_T = 410
-HDR_H    = 72
-FOOTER_H = 26
-INPUT_H  = 34
+W_TARGET = 1680
+H_TARGET = 1040
+LEFT_W_T = 248
+RIGHT_W_T = 360
+HDR_H    = 76
+FOOTER_H = 30
+INPUT_H  = 40
 CONTROL_H = 146
 
 VOICES = ["Charon", "Puck", "Aoede", "Kore", "Fenrir", "Leda", "Orus", "Zephyr"]
 
 # ── Font sistemi ─────────────────────────────────────────────────────────────
-# Grift fontu kullanıcının sisteminde yüklü. Basliklarda daha sert bir vurgu
-# icin ayri extra bold aile adini kullaniyoruz.
-FONT_BODY_FAMILY = "Grift"
-FONT_DISPLAY_FAMILY = "Grift Extra Bold"
+# Windows'ta varsayılan gelen Segoe ailesiyle tutarlı ve okunaklı tipografi.
+FONT_BODY_FAMILY = "Segoe UI"
+FONT_DISPLAY_FAMILY = "Segoe UI Semibold"
 
 
 def font_body(size: int):
@@ -452,6 +451,7 @@ class JarvisUI:
         self._window_geometry = _geo
         self._normal_size = (self.W, self.H)
         self._fullscreen = False
+        self._resize_job = None
 
         self._set_layout_metrics(self.W, self.H)
 
@@ -575,13 +575,13 @@ class JarvisUI:
         self.bg.place(x=0, y=0)
 
         # ── Log ──────────────────────────────────────────────────────────────
-        self.log_frame = tk.Frame(self.root, bg="#030e0e",
-                                  highlightbackground=C_MID,
+        self.log_frame = tk.Frame(self.root, bg="#0c1a28",
+                                  highlightbackground="#1b3448",
                                   highlightthickness=1)
         self.log_frame.place(x=self.CHAT_X, y=self.CHAT_Y,
                              width=self.CHAT_W, height=self.CHAT_H)
         self.log_text = tk.Text(
-            self.log_frame, fg=C_TEXT, bg="#030e0e",
+            self.log_frame, fg=C_TEXT, bg="#0c1a28",
             insertbackground=C_TEXT, borderwidth=0,
             wrap="word", font=font_body(12), padx=12, pady=8)
         self.log_text.pack(fill="both", expand=True)
@@ -612,6 +612,7 @@ class JarvisUI:
         self.root.bind("<F5>",        lambda e: self._toggle_pause())
         self.root.bind("<F11>",       lambda e: self._toggle_fullscreen())
         self.root.bind("<Control-f>", lambda e: self._toggle_fullscreen())
+        self.root.bind("<Configure>", self._on_root_configure)
 
         self._api_key_ready = has_gemini_api_key()
         if not self._api_key_ready:
@@ -633,6 +634,21 @@ class JarvisUI:
         self._resize_surface(*self._normal_size)
         self.root.update_idletasks()
 
+    def _on_root_configure(self, event):
+        if event.widget is not self.root or self._fullscreen or event.width < 1 or event.height < 1:
+            return
+        if self._resize_job:
+            self.root.after_cancel(self._resize_job)
+        self._resize_job = self.root.after(90, self._apply_window_size, event.width, event.height)
+
+    def _apply_window_size(self, width: int, height: int):
+        self._resize_job = None
+        if (width, height) == self._normal_size:
+            return
+        self._normal_size = (width, height)
+        self._window_geometry = f"{width}x{height}+{self.root.winfo_x()}+{self.root.winfo_y()}"
+        self._resize_surface(width, height)
+
     def _enter_fullscreen(self):
         sw = max(self.root.winfo_screenwidth(), self.root.winfo_width(), self.W)
         sh = max(self.root.winfo_screenheight(), self.root.winfo_height(), self.H)
@@ -643,17 +659,21 @@ class JarvisUI:
     def _set_layout_metrics(self, width: int, height: int):
         self.W = int(width)
         self.H = int(height)
-        self.LEFT_W = min(250, max(190, int(self.W * 0.17)))
-        self.RIGHT_W = min(410, max(320, int(self.W * 0.27)))
+        if self.W < 1120:
+            self.LEFT_W = 0
+            self.RIGHT_W = min(330, max(270, int(self.W * 0.34)))
+        else:
+            self.LEFT_W = min(260, max(224, int(self.W * 0.16)))
+            self.RIGHT_W = min(390, max(330, int(self.W * 0.25)))
         center_w = self.W - self.LEFT_W - self.RIGHT_W
         self.FCX = self.LEFT_W + center_w // 2
         content_top = HDR_H + 16
         self.CTRL_Y = self.H - 96
         content_bottom = self.CTRL_Y - 20
         content_h = max(240, content_bottom - content_top)
-        hero_h = int(content_h * 0.57)
+        hero_h = int(content_h * 0.66)
         self.FCY = content_top + hero_h // 2 + 8
-        self.FACE = max(34, min(int(hero_h * 0.22), int(center_w * 0.12), 76))
+        self.FACE = max(34, min(int(hero_h * 0.19), int(center_w * 0.12), 78))
 
         self.CENTER_X0 = self.LEFT_W
         self.CENTER_X1 = self.W - self.RIGHT_W
@@ -692,11 +712,11 @@ class JarvisUI:
     # ── Shutdown button (sağ alt, büyük) ────────────────────────────────────
     def _build_shutdown_button(self):
         self._shutdown_canvas = tk.Button(
-            self.root, text="Kapat",
+            self.root, text="Uygulamayı kapat",
             command=self._shutdown,
-            fg="#ffd7dc", bg="#512633",
-            activeforeground="#ffffff", activebackground="#743443",
-            font=font_body_bold(10), relief="raised", borderwidth=1,
+            fg="#f5dce0", bg="#38232c",
+            activeforeground="#ffffff", activebackground="#56303d",
+            font=font_body_bold(9), relief="flat", borderwidth=0,
             cursor="hand2", padx=12, pady=5,
         )
 
@@ -716,7 +736,7 @@ class JarvisUI:
 
         self._settings_panel = tk.Frame(
             self.root,
-            bg="#041111",
+            bg="#0c1a28",
             highlightbackground=C_MID,
             highlightthickness=1,
         )
@@ -724,16 +744,16 @@ class JarvisUI:
 
         self._settings_title = tk.Label(
             self._settings_panel,
-            text="SETTINGS",
+            text="AYARLAR",
             fg=C_PRI,
-            bg="#041111",
+            bg="#0c1a28",
             font=font_display(11),
         )
         self._settings_tab_settings = tk.Canvas(
             self._settings_panel,
             width=108,
             height=28,
-            bg="#041111",
+            bg="#0c1a28",
             highlightthickness=0,
             cursor="hand2",
         )
@@ -747,20 +767,20 @@ class JarvisUI:
             cursor="hand2",
         )
         self._settings_tab_debug.bind("<Button-1>", lambda e: self._set_settings_tab("debug"))
-        self._settings_body = tk.Frame(self._settings_panel, bg="#041111")
-        self._debug_body = tk.Frame(self._settings_panel, bg="#041111")
+        self._settings_body = tk.Frame(self._settings_panel, bg="#0c1a28")
+        self._debug_body = tk.Frame(self._settings_panel, bg="#0c1a28")
         self._settings_sfx_label = tk.Label(
             self._settings_body,
-            text="SFX",
+            text="SES EFEKTLERİ",
             fg=C_MID,
-            bg="#041111",
+            bg="#0c1a28",
             font=font_body_bold(8),
         )
         self._settings_status_primary = tk.Label(
             self._settings_body,
             text="",
             fg=C_TEXT,
-            bg="#041111",
+            bg="#0c1a28",
             font=font_body_bold(9),
             anchor="w",
             justify="left",
@@ -769,7 +789,7 @@ class JarvisUI:
             self._settings_body,
             text="",
             fg=C_MID,
-            bg="#041111",
+            bg="#0c1a28",
             font=font_body(9),
             anchor="w",
             justify="left",
@@ -777,7 +797,7 @@ class JarvisUI:
         self._debug_text = tk.Text(
             self._debug_body,
             fg=C_TEXT,
-            bg="#020a0a",
+            bg="#091521",
             insertbackground=C_TEXT,
             borderwidth=0,
             wrap="word",
@@ -801,14 +821,14 @@ class JarvisUI:
         bh = int(c["height"])
         c.delete("all")
         accent = C_BLUE if self._settings_open else C_MID
-        inner = "#062020" if self._settings_open else "#021010"
+        inner = "#102535" if self._settings_open else "#0b1724"
         c.create_rectangle(0, 0, bw, bh, fill=inner, outline="")
         bl = 9
         for bx, by, sx, sy in [(0, 0, 1, 1), (bw, 0, -1, 1), (0, bh, 1, -1), (bw, bh, -1, -1)]:
             c.create_line(bx, by, bx + sx * bl, by, fill=accent, width=2)
             c.create_line(bx, by, bx, by + sy * bl, fill=accent, width=2)
-        c.create_text(14, 15, text="SYSTEM SETTINGS", fill=C_PRI, font=font_display(10), anchor="w")
-        c.create_text(14, 33, text=MODEL_BADGE, fill="#4f7b78", font=font_body(9), anchor="w")
+        c.create_text(14, 15, text="SİSTEM AYARLARI", fill=C_PRI, font=font_display(10), anchor="w")
+        c.create_text(14, 33, text="Ses · API · Tercihler", fill="#8aa4b3", font=font_body(8), anchor="w")
         c.create_text(bw - 14, bh // 2, text="▾" if self._settings_open else "▸",
                       fill=accent, font=font_display(14), anchor="e")
 
@@ -819,16 +839,16 @@ class JarvisUI:
 
     def _draw_settings_tabs(self):
         for key, canvas, label in (
-            ("settings", self._settings_tab_settings, "SETTINGS"),
-            ("debug", self._settings_tab_debug, "DEBUG"),
+            ("settings", self._settings_tab_settings, "GENEL"),
+            ("debug", self._settings_tab_debug, "KAYITLAR"),
         ):
             active = self._settings_tab == key
             bw = int(canvas["width"])
             bh = int(canvas["height"])
             canvas.delete("all")
             outline = C_PRI if active else C_DIM
-            fill = "#082020" if active else "#041111"
-            text_col = C_PRI if active else "#5ea7a0"
+            fill = "#153345" if active else "#0c1a28"
+            text_col = C_PRI if active else "#8aa4b3"
             canvas.create_rectangle(0, 0, bw, bh, fill=fill, outline="")
             bl = 7
             for bx, by, sx, sy in [(0, 0, 1, 1), (bw, 0, -1, 1), (0, bh, 1, -1), (bw, bh, -1, -1)]:
@@ -918,7 +938,7 @@ class JarvisUI:
         for bx, by, sx, sy in [(0, 0, 1, 1), (bw, 0, -1, 1), (0, bh, 1, -1), (bw, bh, -1, -1)]:
             c.create_line(bx, by, bx + sx * bl, by, fill=C_BLUE, width=1)
             c.create_line(bx, by, bx, by + sy * bl, fill=C_BLUE, width=1)
-        c.create_text(bw // 2, bh // 2, text="⌘ API SETTINGS",
+        c.create_text(bw // 2, bh // 2, text="API ayarları",
                       fill=C_BLUE, font=font_body_bold(10))
 
     def _build_fx_slider(self, parent=None):
@@ -926,7 +946,7 @@ class JarvisUI:
         slider_w = 280
         self._volume_label = tk.Label(
             parent,
-            text=f"FX LEVEL  {int(self.sound.get_volume() * 100)}%",
+            text=f"SES DÜZEYİ  {int(self.sound.get_volume() * 100)}%",
             fg=C_PRI,
             bg=parent.cget("bg"),
             font=font_body_bold(10),
@@ -956,7 +976,7 @@ class JarvisUI:
             volume = max(0, min(100, int(float(value))))
         except (TypeError, ValueError):
             return
-        self._volume_label.configure(text=f"FX LEVEL  {volume}%")
+        self._volume_label.configure(text=f"SES DÜZEYİ  {volume}%")
         self.sound.set_volume(volume / 100.0)
 
     def _play_startup_sfx_once(self):
@@ -994,7 +1014,7 @@ class JarvisUI:
             parent, command=self._toggle_sfx,
             fg=C_TEXT, bg=C_PANEL, activeforeground="#ffffff",
             activebackground="#21445b", font=font_body_bold(9),
-            relief="raised", borderwidth=1, cursor="hand2",
+            relief="flat", borderwidth=0, cursor="hand2",
             width=12, pady=4,
         )
         self._sfx_on = False
@@ -1015,7 +1035,7 @@ class JarvisUI:
     def _build_voice_selector(self, parent=None):
         parent = parent or self.root
         self._voice_var = tk.StringVar(value=self._current_voice)
-        self._voice_label = tk.Label(parent, text="VOICE", fg=C_MID, bg=parent.cget("bg"),
+        self._voice_label = tk.Label(parent, text="SES", fg=C_MID, bg=parent.cget("bg"),
                                      font=font_body_bold(8))
 
         self._voice_menu = tk.OptionMenu(parent, self._voice_var, *VOICES,
@@ -1039,34 +1059,34 @@ class JarvisUI:
     def _build_mute_button(self):
         self._mute_canvas = tk.Button(
             self.root, command=self._toggle_mute,
-            fg=C_TEXT, bg="#143b4a", activeforeground="#ffffff",
-            activebackground="#1d5b70", font=font_body_bold(10),
-            relief="raised", borderwidth=1, cursor="hand2",
+            fg="#e7f3f7", bg="#123846", activeforeground="#ffffff",
+            activebackground="#1d5867", font=font_body_bold(9),
+            relief="flat", borderwidth=0, cursor="hand2",
             padx=14, pady=7,
         )
         self._draw_mute_button()
 
     def _draw_mute_button(self):
         if self.muted:
-            self._mute_canvas.configure(text="Mikrofonu aç", bg="#512633")
+            self._mute_canvas.configure(text="Mikrofonu aç", bg="#56303d")
         else:
-            self._mute_canvas.configure(text="Mikrofonu kapat", bg="#143b4a")
+            self._mute_canvas.configure(text="Mikrofonu kapat", bg="#123846")
 
     def _build_pause_button(self):
         self._pause_canvas = tk.Button(
             self.root, command=self._toggle_pause,
-            fg=C_TEXT, bg="#24354c", activeforeground="#ffffff",
-            activebackground="#354f70", font=font_body_bold(10),
-            relief="raised", borderwidth=1, cursor="hand2",
+            fg="#e7f3f7", bg="#172a3b", activeforeground="#ffffff",
+            activebackground="#29435a", font=font_body_bold(9),
+            relief="flat", borderwidth=0, cursor="hand2",
             padx=14, pady=7,
         )
         self._draw_pause_button()
 
     def _draw_pause_button(self):
         if self.paused:
-            self._pause_canvas.configure(text="Devam et", bg="#66502c")
+            self._pause_canvas.configure(text="Devam et", bg="#705327")
         else:
-            self._pause_canvas.configure(text="Duraklat", bg="#24354c")
+            self._pause_canvas.configure(text="Duraklat", bg="#172a3b")
 
     def _toggle_mute(self):
         self.muted = not self.muted
@@ -1140,15 +1160,20 @@ class JarvisUI:
             x=x0, y=self.CHAT_INPUT_Y, width=inp_w, height=INPUT_H)
         self._input_entry.bind("<Return>",   self._on_input_submit)
         self._input_entry.bind("<KP_Enter>", self._on_input_submit)
+        self._input_placeholder = "Mesajını yaz…"
+        self._input_entry.insert(0, self._input_placeholder)
+        self._input_entry.configure(fg="#7891a2")
+        self._input_entry.bind("<FocusIn>", self._clear_input_placeholder)
+        self._input_entry.bind("<FocusOut>", self._restore_input_placeholder)
 
         self._send_btn = tk.Button(
-            self.root, text="SEND ▸",
+            self.root, text="Gönder  ›",
             command=self._on_input_submit,
-            fg=C_ORG, bg=C_PANEL,
-            activeforeground=C_BG, activebackground=C_ORG,
-            font=font_body_bold(10),
+            fg="#101922", bg=C_PRI,
+            activeforeground="#101922", activebackground="#82e4ed",
+            font=font_body_bold(9),
             borderwidth=0, cursor="hand2",
-            highlightthickness=1, highlightbackground=C_ORG)
+            highlightthickness=0)
         self._send_btn.place(
             x=x0+inp_w+gap, y=self.CHAT_INPUT_Y,
             width=btn_w, height=INPUT_H)
@@ -1203,7 +1228,7 @@ class JarvisUI:
 
     def _on_input_submit(self, event=None):
         text = self._input_var.get().strip()
-        if not text:
+        if not text or text == getattr(self, "_input_placeholder", ""):
             return
         if self.paused:
             self.write_log("SYS: JARVIS duraklatılmış durumda. Devam etmek için pause'u kapat.")
@@ -1216,6 +1241,16 @@ class JarvisUI:
             return
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(text,), daemon=True).start()
+
+    def _clear_input_placeholder(self, event=None):
+        if self._input_var.get() == self._input_placeholder:
+            self._input_var.set("")
+            self._input_entry.configure(fg=C_TEXT)
+
+    def _restore_input_placeholder(self, event=None):
+        if not self._input_var.get().strip():
+            self._input_var.set(self._input_placeholder)
+            self._input_entry.configure(fg="#7891a2")
 
     # ── State & callbacks ────────────────────────────────────────────────────
     def set_state(self, state: str):
@@ -1899,223 +1934,172 @@ class JarvisUI:
     # ── Ana çizim ─────────────────────────────────────────────────────────────
     def _draw(self):
         c = self.bg
-        W, H, t = self.W, self.H, self.tick
+        W, H = self.W, self.H
         c.delete("all")
         c.configure(bg=C_BG)
 
-        left, right = self.LEFT_W, self.RIGHT_W
-        center_x = left + 18
-        center_w = max(120, W - left - right - 36)
-        right_x = W - right
-        top = HDR_H + 16
-        bottom = self.CTRL_Y - 20
+        left = self.LEFT_W
+        right_x = W - self.RIGHT_W
+        center_x = left + (18 if left else 20)
+        center_w = max(120, right_x - center_x - 18)
+        top = HDR_H + 18
+        bottom = self.CTRL_Y - 24
         available_h = max(220, bottom - top)
-        hero_h = int(available_h * 0.57)
+        hero_h = int(available_h * 0.66)
         hero_y = top
         cards_y = hero_y + hero_h + 14
         cards_h = max(90, bottom - cards_y)
         state = "PAUSED" if self.paused else self._jarvis_state
         state_color = self._state_color(state)
-        status_text = {
-            "LISTENING": "Listening",
-            "SPEAKING": "Speaking",
-            "THINKING": "Thinking",
-            "INITIALISING": "Connecting",
-            "ERROR": "Needs attention",
-            "PAUSED": "Paused",
+        state_text = {
+            "LISTENING": "Dinliyor",
+            "SPEAKING": "Konuşuyor",
+            "THINKING": "Düşünüyor",
+            "INITIALISING": "Bağlanıyor",
+            "ERROR": "Dikkat gerekiyor",
+            "PAUSED": "Duraklatıldı",
         }.get(state, state.title())
 
-        def panel(x: int, y: int, w: int, h: int, title: str, accent: str = C_PRI):
-            c.create_rectangle(x, y, x + w, y + h, fill="#0b1b2b", outline="#18364b", width=1)
-            c.create_rectangle(x + 1, y + 1, x + w - 1, y + 30, fill="#0d2032", outline="")
-            c.create_line(x + 1, y + 30, x + w - 1, y + 30, fill="#1a3b50")
-            c.create_rectangle(x + 12, y + 10, x + 15, y + 21, fill=accent, outline="")
-            c.create_text(x + 24, y + 16, text=title.upper(), fill="#8bb9cb",
+        def panel(x, y, w, h, title, accent=C_PRI, subtitle=None):
+            c.create_rectangle(x, y, x+w, y+h, fill="#0c1a28", outline="#1b3448", width=1)
+            c.create_rectangle(x+1, y+1, x+w-1, y+34, fill="#102132", outline="")
+            c.create_line(x+1, y+34, x+w-1, y+34, fill="#1a3448")
+            c.create_oval(x+14, y+14, x+21, y+21, fill=accent, outline="")
+            c.create_text(x+30, y+17, text=title, fill="#e1edf4",
                           font=font_body_bold(9), anchor="w")
-            c.create_line(x, y, x + 14, y, fill=accent, width=2)
-            c.create_line(x, y, x, y + 14, fill=accent, width=2)
-            c.create_line(x + w - 14, y + h, x + w, y + h, fill=accent, width=2)
-            c.create_line(x + w, y + h - 14, x + w, y + h, fill=accent, width=2)
+            if subtitle:
+                c.create_text(x+w-12, y+17, text=subtitle, fill="#7591a3",
+                              font=font_body(8), anchor="e")
 
-        def text(x: int, y: int, value: str, color: str = C_TEXT,
-                 size: int = 10, bold: bool = False, anchor: str = "w"):
-            font = font_body_bold(size) if bold else font_body(size)
-            c.create_text(x, y, text=value, fill=color, font=font, anchor=anchor)
+        def label(x, y, value, color="#9bb0be", size=9, bold=False, anchor="w"):
+            c.create_text(x, y, text=value, fill=color,
+                          font=font_body_bold(size) if bold else font_body(size), anchor=anchor)
 
-        # Keep the dashboard background still so the controls stay easy to read.
+        # Clear, restrained workspace chrome.
         c.create_rectangle(0, 0, W, H, fill=C_BG, outline="")
+        c.create_rectangle(0, 0, W, HDR_H, fill="#0b1724", outline="")
+        c.create_line(0, HDR_H, W, HDR_H, fill="#1c3448")
+        if left:
+            c.create_rectangle(0, HDR_H, left, H-FOOTER_H, fill="#0a1723", outline="")
+            c.create_line(left, HDR_H, left, H-FOOTER_H, fill="#1b3347")
+        c.create_rectangle(right_x, HDR_H, W, H-FOOTER_H, fill="#0a1723", outline="")
+        c.create_line(right_x, HDR_H, right_x, H-FOOTER_H, fill="#1b3347")
 
-        # Header and left command rail.
-        c.create_rectangle(0, 0, W, HDR_H, fill="#091827", outline="")
-        c.create_line(0, HDR_H, W, HDR_H, fill="#1c5269")
-        c.create_rectangle(0, HDR_H, left, H - FOOTER_H, fill="#091827", outline="")
-        c.create_line(left, HDR_H, left, H - FOOTER_H, fill="#18384d")
-        c.create_text(left + 18, 30, text="J A R V I S", fill=C_PRI,
-                      font=font_display(18), anchor="w")
-        c.create_text(left + 20, 51, text="COMMAND CENTER", fill="#6c9db1",
+        # Header
+        c.create_oval(20, 21, 52, 53, fill="#103746", outline="#276277", width=1)
+        c.create_text(36, 37, text="J", fill=C_PRI, font=font_display(17))
+        c.create_text(64, 28, text="J.A.R.V.I.S", fill="#edf7fb",
+                      font=font_display(14), anchor="w")
+        c.create_text(65, 49, text="KİŞİSEL ASİSTAN", fill="#7895a7",
+                      font=font_body_bold(8), anchor="w")
+        if right_x - left > 420:
+            c.create_text((left + right_x)//2, 29,
+                          text=time.strftime("%A, %d %B %Y").upper(),
+                          fill="#7f98a8", font=font_body_bold(8))
+            c.create_text((left + right_x)//2, 52, text=time.strftime("%H:%M:%S"),
+                          fill="#e8f3f8", font=font_display(16))
+        badge_w = 128
+        badge_x = W - badge_w - 18
+        c.create_rectangle(badge_x, 24, badge_x+badge_w, 52,
+                           fill="#112630", outline="#254654")
+        c.create_oval(badge_x+10, 34, badge_x+18, 42, fill=state_color, outline="")
+        c.create_text(badge_x+26, 38, text=state_text.upper(), fill=state_color,
                       font=font_body_bold(8), anchor="w")
 
-        c.create_text((left + right_x) // 2, 23, text=time.strftime("%A, %d %B %Y").upper(),
-                      fill="#82aabd", font=font_body_bold(8))
-        c.create_text((left + right_x) // 2, 48, text=time.strftime("%H:%M:%S"),
-                      fill=C_PRI, font=font_display(19))
+        # Compact system rail, hidden on narrow windows.
+        if left:
+            rail_x, rail_w = 14, left-28
+            panel(rail_x, top, rail_w, 142, "Sistem durumu", C_GREEN)
+            api_ok = bool(getattr(self, "_api_key_ready", False))
+            label(rail_x+14, top+60, "Yapay zekâ", size=8)
+            label(rail_x+rail_w-14, top+60, "Gemini bağlı" if api_ok else "Kurulum gerekli",
+                  C_GREEN if api_ok else C_ORG, 8, True, "e")
+            label(rail_x+14, top+88, "Mikrofon", size=8)
+            mic_text = "Kapalı" if self.muted else "Hazır"
+            label(rail_x+rail_w-14, top+88, mic_text,
+                  C_RED if self.muted else C_GREEN, 8, True, "e")
+            uptime = max(0, int(time.time()-self._started_at))
+            hours, rem = divmod(uptime, 3600)
+            minutes, seconds = divmod(rem, 60)
+            label(rail_x+14, top+116, "Çalışma süresi", size=8)
+            label(rail_x+rail_w-14, top+116, f"{hours:02}:{minutes:02}:{seconds:02}",
+                  C_TEXT, 8, True, "e")
 
-        # Live status badge.
-        badge_x, badge_y = right_x - 135, 20
-        c.create_rectangle(badge_x, badge_y, badge_x + 116, badge_y + 30,
-                           fill="#102a34", outline="#24566a")
-        c.create_oval(badge_x + 10, badge_y + 11, badge_x + 18, badge_y + 19,
-                      fill=state_color, outline="")
-        text(badge_x + 25, badge_y + 15, status_text.upper(), state_color, 8, True)
+            monitor_y = top+156
+            monitor_h = min(214, max(180, int(available_h*.30)))
+            panel(rail_x, monitor_y, rail_w, monitor_h, "Bilgisayar", C_BLUE)
+            metric_y = monitor_y+58
+            for title, key in (("İşlemci", "cpu"), ("Bellek", "ram"), ("Disk", "disk")):
+                value = max(0.0, min(100.0, float(self._stats[key])))
+                label(rail_x+14, metric_y, title, size=8)
+                label(rail_x+rail_w-14, metric_y, f"{value:.0f}%", C_PRI, 8, True, "e")
+                self._bar(c, rail_x+14, metric_y+12, rail_w-28, 5, value, C_PRI)
+                metric_y += 43
 
-        # Left rail: identity and live system summary.
-        panel(12, HDR_H + 14, left - 24, 132, "System status", C_GREEN)
-        gemini_text = "Ready" if self._api_key_ready else "API key needed"
-        text(26, HDR_H + 63, "GEMINI", "#81a9ba", 8, True)
-        text(left - 24, HDR_H + 63, gemini_text, C_GREEN if self._api_key_ready else C_GOLD, 9, True, "e")
-        text(26, HDR_H + 91, "VOICE", "#81a9ba", 8, True)
-        voice_text = "Muted" if self.muted else ("Paused" if self.paused else status_text)
-        text(left - 24, HDR_H + 91, voice_text, C_RED if self.muted else state_color, 9, True, "e")
-        text(26, HDR_H + 119, "UPTIME", "#81a9ba", 8, True)
-        uptime = max(0, int(time.time() - self._started_at))
-        hours, remainder = divmod(uptime, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        text(left - 24, HDR_H + 119, f"{hours:02}:{minutes:02}:{seconds:02}", C_TEXT, 9, True, "e")
+            weather_y = monitor_y+monitor_h+14
+            weather_h = max(100, H-FOOTER_H-weather_y-14)
+            panel(rail_x, weather_y, rail_w, weather_h, "Hava durumu", C_ORG)
+            c.create_text(rail_x+14, weather_y+68, text=self._weather_card["primary"],
+                          fill=C_TEXT, font=font_display(23), anchor="w")
+            label(rail_x+14, weather_y+92, self._weather_card["city"].upper(), C_ORG, 8, True)
+            for idx, detail in enumerate(self._weather_card["details"][:3]):
+                label(rail_x+14, weather_y+116+idx*19, detail[:24], size=8)
 
-        panel(12, HDR_H + 158, left - 24, 182, "System monitor", C_BLUE)
-        metric_y = HDR_H + 204
-        for label, key in (("CPU", "cpu"), ("MEMORY", "ram"), ("DISK", "disk")):
-            value = max(0.0, min(100.0, float(self._stats[key])))
-            text(26, metric_y, label, "#8bb0c0", 8, True)
-            text(left - 24, metric_y, f"{value:.0f}%", C_PRI, 9, True, "e")
-            self._bar(c, 26, metric_y + 11, left - 52, 5, value, C_PRI)
-            metric_y += 40
+        # Main assistant card
+        panel(center_x, hero_y, center_w, hero_h, "Asistan", C_PRI,
+              "GEMINI · SESLİ MOD")
+        c.create_text(center_x+center_w//2, hero_y+64,
+                      text="Merhaba Doğuş", fill="#e8f4f8",
+                      font=font_display(20))
+        c.create_text(center_x+center_w//2, hero_y+88,
+                      text="Nasıl yardımcı olabilirim?", fill="#8ca7b6",
+                      font=font_body(10))
+        # The animated core is the primary focal point; its state follows the voice engine.
+        self._draw_orb(c)
+        c.create_text(self.FCX, min(hero_y+hero_h-22, self.FCY+self.FACE+28),
+                      text=f"{state_text}  ·  Çekirdeğe tıklayarak duraklat",
+                      fill=state_color, font=font_body_bold(8))
 
-        panel(12, HDR_H + 354, left - 24, max(100, H - HDR_H - FOOTER_H - 450),
-              "Quick controls", C_ORG)
-        quick_items = [
-            ("F4", "Microphone"),
-            ("F5", "Pause / resume"),
-            ("F11", "Fullscreen"),
-            ("ESC", "Exit"),
-        ]
-        quick_y = HDR_H + 402
-        for key_name, label in quick_items:
-            text(26, quick_y, key_name, C_PRI, 8, True)
-            text(58, quick_y, label, "#a9c5d1", 8)
-            quick_y += 26
-
-        # Main hero panel with the live orb.
-        panel(center_x, hero_y, center_w, hero_h, "AI core overview", C_PRI)
-        c.create_text(center_x + 20, hero_y + 52, text="JARVIS",
-                      fill=C_PRI, font=font_display(20), anchor="w")
-        c.create_text(center_x + 21, hero_y + 74, text="PERSONAL AI · REALTIME VOICE",
-                      fill="#76a3b5", font=font_body_bold(8), anchor="w")
-        c.create_oval(center_x + 20, hero_y + 91, center_x + 27, hero_y + 98,
-                      fill=state_color, outline="")
-        text(center_x + 35, hero_y + 95, status_text, state_color, 9, True)
-        core_r = self.FACE
-        c.create_oval(self.FCX - core_r - 8, self.FCY - core_r - 8,
-                      self.FCX + core_r + 8, self.FCY + core_r + 8,
-                      fill="#102b3b", outline="#28546a", width=2)
-        c.create_oval(self.FCX - core_r, self.FCY - core_r,
-                      self.FCX + core_r, self.FCY + core_r,
-                      fill="#102234", outline=C_PRI, width=2)
-        c.create_oval(self.FCX - core_r + 9, self.FCY - core_r + 9,
-                      self.FCX + core_r - 9, self.FCY + core_r - 9,
-                      fill="#0c1a29", outline="#23445a", width=1)
-        c.create_text(self.FCX, self.FCY - 5, text="JARVIS",
-                      fill="#e1f8ff", font=font_display(13))
-        c.create_text(self.FCX, self.FCY + 17, text=status_text.upper(),
-                      fill=state_color, font=font_body_bold(7))
-        c.create_text(self.FCX, hero_y + hero_h - 18,
-                      text="Click the core to pause or resume", fill="#648a9b",
-                      font=font_body(8))
-
-        # Three compact information cards replace the old crowded side panels.
+        # Small, useful live cards under the assistant.
         gap = 12
-        card_w = (center_w - gap * 2) // 3
-        card_specs = [
-            (center_x, card_w, "SYSTEM HEALTH", C_GREEN),
-            (center_x + card_w + gap, card_w, "WEATHER · ISTANBUL", C_BLUE),
-            (center_x + (card_w + gap) * 2, center_w - (card_w + gap) * 2,
-             "VOICE & ACTIVITY", C_ORG),
+        card_w = max(70, (center_w-gap*2)//3)
+        specs = [
+            (center_x, card_w, "SİSTEM SAĞLIĞI", C_GREEN),
+            (center_x+card_w+gap, card_w, "HAVA DURUMU", C_BLUE),
+            (center_x+2*(card_w+gap), center_w-2*(card_w+gap), "SES DURUMU", C_ORG),
         ]
-        for x, w, title, accent in card_specs:
+        for x, w, title, accent in specs:
             panel(x, cards_y, w, cards_h, title, accent)
+        if cards_h > 76:
+            health_x, health_w, _, _ = specs[0]
+            for i, (name, key) in enumerate((("CPU", "cpu"), ("RAM", "ram"), ("DİSK", "disk"))):
+                xx = health_x+16+i*((health_w-32)/3)
+                label(xx, cards_y+63, name, size=8)
+                label(xx, cards_y+86, f"{self._stats[key]:.0f}%", C_TEXT, 13, True)
+            wx, ww, _, _ = specs[1]
+            c.create_text(wx+16, cards_y+69, text=self._weather_card["primary"],
+                          fill=C_TEXT, font=font_display(23), anchor="w")
+            label(wx+16, cards_y+91, self._weather_card["city"].upper(), C_BLUE, 8, True)
+            for i, detail in enumerate(self._weather_card["details"][:2]):
+                label(wx+16, cards_y+112+i*17, detail[:30], size=8)
+            vx, vw, _, _ = specs[2]
+            label(vx+16, cards_y+68, "Mikrofon", size=8)
+            label(vx+vw-16, cards_y+68, "KAPALI" if self.muted else "HAZIR",
+                  C_RED if self.muted else C_GREEN, 8, True, "e")
+            label(vx+16, cards_y+94, "Ses profili", size=8)
+            label(vx+vw-16, cards_y+94, self._current_voice.upper(), C_TEXT, 8, True, "e")
 
-        if cards_h > 110:
-            health_x, health_w, _, _ = card_specs[0]
-            if self._health_visible:
-                health_lines = [line.strip() for line in self._health_display.splitlines() if line.strip()]
-                for idx, line in enumerate(health_lines[:5]):
-                    c.create_text(health_x + 18, cards_y + 55 + idx * 22,
-                                  text=line[:42], fill=C_TEXT if idx else C_PRI,
-                                  font=font_body_bold(8) if idx == 0 else font_body(8),
-                                  anchor="w")
-            else:
-                health_values = [
-                    ("CPU", self._stats["cpu"]),
-                    ("RAM", self._stats["ram"]),
-                    ("DISK", self._stats["disk"]),
-                ]
-                col_w = (health_w - 32) / 3
-                for idx, (label, value) in enumerate(health_values):
-                    cx = health_x + 16 + col_w * idx + col_w / 2
-                    ring_r = max(18, min(30, int(col_w * 0.25)))
-                    cy = cards_y + min(104, cards_h * 0.56)
-                    c.create_oval(cx-ring_r, cy-ring_r, cx+ring_r, cy+ring_r,
-                                  outline="#1c3e51", width=5)
-                    c.create_arc(cx-ring_r, cy-ring_r, cx+ring_r, cy+ring_r,
-                                 start=90, extent=-360 * max(0, min(100, value)) / 100,
-                                 outline=C_PRI, width=5, style="arc")
-                    c.create_text(cx, cy, text=f"{value:.0f}%", fill=C_TEXT,
-                                  font=font_body_bold(9))
-                    c.create_text(cx, cy + ring_r + 17, text=label,
-                                  fill="#8bb0c0", font=font_body_bold(8))
+        # Conversation area with a calmer, more legible transcript.
+        chat_x, chat_y = right_x+12, HDR_H+18
+        chat_w, chat_h = self.RIGHT_W-24, H-HDR_H-FOOTER_H-36
+        panel(chat_x, chat_y, chat_w, chat_h, "Sohbet", state_color, "CANLI")
 
-            weather_x, weather_w, _, _ = card_specs[1]
-            wx = weather_x + 18
-            c.create_text(wx, cards_y + 69, text=self._weather_card["primary"],
-                          fill=C_PRI, font=font_display(27), anchor="w")
-            c.create_text(wx, cards_y + 94, text=self._weather_card["city"].upper(),
-                          fill="#9abac8", font=font_body_bold(8), anchor="w")
-            for idx, detail in enumerate(self._weather_card["details"][:2]):
-                c.create_text(wx, cards_y + 124 + idx * 20, text=detail[:36],
-                              fill="#bfd2dc", font=font_body(8), anchor="w")
-
-            voice_x, voice_w, _, _ = card_specs[2]
-            c.create_text(voice_x + 18, cards_y + 67, text=status_text.upper(),
-                          fill=state_color, font=font_display(13), anchor="w")
-            c.create_text(voice_x + 18, cards_y + 91, text="Microphone",
-                          fill="#89adbd", font=font_body(8), anchor="w")
-            c.create_text(voice_x + voice_w - 18, cards_y + 91,
-                          text="MUTED" if self.muted else "ACTIVE",
-                          fill=C_RED if self.muted else C_GREEN,
-                          font=font_body_bold(8), anchor="e")
-            wave_y = cards_y + min(139, cards_h - 28)
-            wave = self._wave_jarvis if self.speaking else self._wave_user
-            wave_w = max(20, voice_w - 36)
-            step = wave_w / max(1, len(wave))
-            for idx, amplitude in enumerate(wave):
-                x = voice_x + 18 + idx * step
-                c.create_line(x, wave_y - amplitude / 2, x, wave_y + amplitude / 2,
-                              fill=C_PRI if idx % 3 else C_GREEN, width=2)
-
-        # Conversation pane and input area are interactive Tk widgets above this canvas.
-        c.create_rectangle(right_x, HDR_H, W, H - FOOTER_H, fill="#091827", outline="")
-        c.create_line(right_x, HDR_H, right_x, H - FOOTER_H, fill="#18384d")
-        panel(right_x + 12, self.CHAT_PANEL_Y, self.CHAT_PANEL_W,
-              self.CHAT_PANEL_H, "Live conversation", state_color)
-
-        # Bottom action strip and identity.
-        c.create_line(left, H - FOOTER_H, W, H - FOOTER_H, fill="#1b4358")
-        c.create_text(left + 18, H - FOOTER_H // 2,
-                      text="DOĞUŞ  ·  LOCAL ASSISTANT", fill="#7399aa",
-                      font=font_body_bold(8), anchor="w")
-        c.create_text(W - 18, H - FOOTER_H // 2,
-                      text="F4 MICROPHONE     F5 PAUSE     F11 FULLSCREEN",
-                      fill="#7399aa", font=font_body(8), anchor="e")
+        # Footer
+        c.create_line(0, H-FOOTER_H, W, H-FOOTER_H, fill="#1b3448")
+        label(18, H-FOOTER_H//2, "JARVIS  ·  MASAÜSTÜ ASİSTANI", "#7892a2", 8, True)
+        if W > 980:
+            label(W-18, H-FOOTER_H//2, "F4 MİKROFON     F5 DURAKLAT     F11 TAM EKRAN",
+                  "#7892a2", 8, False, "e")
 
     def wait_for_api_key(self):
         while not self._api_key_ready:
@@ -2124,76 +2108,80 @@ class JarvisUI:
     def _show_setup_ui(self, edit_mode: bool = False):
         self._close_setup_ui()
 
-        self.setup_frame = tk.Frame(self.root, bg="#00080d",
-                                    highlightbackground=C_PRI,
+        self.setup_frame = tk.Frame(self.root, bg="#0c1a28",
+                                    highlightbackground="#2c596a",
                                     highlightthickness=1)
         setup_w = min(760, max(560, int(self.W * 0.42)))
         setup_h = min(520, max(430, int(self.H * 0.44)))
         self.setup_frame.place(relx=0.5, rely=0.5, anchor="center", width=setup_w, height=setup_h)
         self.setup_frame.pack_propagate(False)
 
-        title = "◈ API AYARLARI" if edit_mode else "◈ İLK KURULUM GEREKLİ"
+        title = "API ayarları" if edit_mode else "Jarvis kurulumu"
         subtitle = (
-            "Gemini ve YouTube ayarlarinizi guncelleyin."
+            "Gemini ve YouTube bağlantı bilgilerini güncelle."
             if edit_mode else
-            "Gemini API anahtarini girin. YouTube alanlari opsiyoneldir."
+            "Devam etmek için Gemini anahtarını ekle. YouTube alanları isteğe bağlıdır."
         )
         config = load_app_config()
 
         tk.Label(self.setup_frame, text=title,
-                 fg=C_PRI, bg="#00080d", font=font_display(20)).pack(pady=(28, 6))
+                 fg="#e8f4f8", bg="#0c1a28", font=font_display(19)).pack(pady=(24, 6))
         tk.Label(self.setup_frame, text=subtitle,
-                 fg=C_MID, bg="#00080d", font=font_body(13)).pack(pady=(0, 14))
-        tk.Label(self.setup_frame, text="GEMINI API KEY",
-                 fg=C_DIM, bg="#00080d", font=font_body(12)).pack(pady=(8, 4))
+                 fg="#8ba5b4", bg="#0c1a28", font=font_body(10)).pack(pady=(0, 12))
+        tk.Label(self.setup_frame, text="GEMINI API ANAHTARI",
+                 fg="#a8bfca", bg="#0c1a28", font=font_body_bold(9)).pack(pady=(6, 4))
 
         self.api_entry = tk.Entry(
             self.setup_frame, width=60,
-            fg=C_TEXT, bg="#000d12", insertbackground=C_TEXT,
-            borderwidth=0, font=font_body(14), show="*")
-        self.api_entry.pack(pady=(0, 8), ipady=5)
+            fg=C_TEXT, bg="#091521", insertbackground=C_PRI,
+            borderwidth=0, font=font_body(11), highlightthickness=1,
+            highlightbackground="#294355", highlightcolor=C_PRI, show="*")
+        self.api_entry.pack(pady=(0, 6), ipady=6)
 
         current_key = str(config.get("gemini_api_key", "") or "")
         if current_key:
             self.api_entry.insert(0, current_key)
 
-        tk.Label(self.setup_frame, text="YOUTUBE API KEY",
-                 fg=C_DIM, bg="#00080d", font=font_body(12)).pack(pady=(10, 4))
+        tk.Label(self.setup_frame, text="YOUTUBE API ANAHTARI  ·  İSTEĞE BAĞLI",
+                 fg="#a8bfca", bg="#0c1a28", font=font_body_bold(9)).pack(pady=(8, 4))
 
         self.youtube_api_entry = tk.Entry(
             self.setup_frame, width=60,
-            fg=C_TEXT, bg="#000d12", insertbackground=C_TEXT,
-            borderwidth=0, font=font_body(14), show="*")
-        self.youtube_api_entry.pack(pady=(0, 8), ipady=5)
+            fg=C_TEXT, bg="#091521", insertbackground=C_PRI,
+            borderwidth=0, font=font_body(11), highlightthickness=1,
+            highlightbackground="#294355", highlightcolor=C_PRI, show="*")
+        self.youtube_api_entry.pack(pady=(0, 6), ipady=6)
         current_youtube_key = str(config.get("youtube_api_key", "") or "")
         if current_youtube_key:
             self.youtube_api_entry.insert(0, current_youtube_key)
 
-        tk.Label(self.setup_frame, text="YOUTUBE HANDLE / CHANNEL",
-                 fg=C_DIM, bg="#00080d", font=font_body(12)).pack(pady=(10, 4))
+        tk.Label(self.setup_frame, text="YOUTUBE KANAL ADI  ·  İSTEĞE BAĞLI",
+                 fg="#a8bfca", bg="#0c1a28", font=font_body_bold(9)).pack(pady=(8, 4))
 
         self.youtube_handle_entry = tk.Entry(
             self.setup_frame, width=60,
-            fg=C_TEXT, bg="#000d12", insertbackground=C_TEXT,
-            borderwidth=0, font=font_body(14))
-        self.youtube_handle_entry.pack(pady=(0, 8), ipady=5)
+            fg=C_TEXT, bg="#091521", insertbackground=C_PRI,
+            borderwidth=0, font=font_body(11), highlightthickness=1,
+            highlightbackground="#294355", highlightcolor=C_PRI)
+        self.youtube_handle_entry.pack(pady=(0, 6), ipady=6)
         current_handle = str(config.get("youtube_channel_handle", "") or "")
         if current_handle:
             self.youtube_handle_entry.insert(0, current_handle)
 
-        buttons = tk.Frame(self.setup_frame, bg="#00080d")
-        buttons.pack(pady=14)
+        buttons = tk.Frame(self.setup_frame, bg="#0c1a28")
+        buttons.pack(pady=10)
 
-        tk.Button(buttons, text="▸ KAYDET",
-                  command=self._save_api_key, bg=C_BG, fg=C_PRI,
-                  activebackground="#003344", font=font_body_bold(13),
-                  borderwidth=0, padx=24, pady=10).pack(side="left", padx=8)
+        tk.Button(buttons, text="Kaydet ve devam et",
+                  command=self._save_api_key, bg=C_PRI, fg="#07111f",
+                  activebackground="#83e7ee", activeforeground="#07111f",
+                  font=font_body_bold(10), relief="flat",
+                  borderwidth=0, padx=20, pady=10).pack(side="left", padx=8)
 
         if edit_mode:
-            tk.Button(buttons, text="KAPAT",
-                      command=self._close_setup_ui, bg="#08111a", fg=C_DIM,
-                      activebackground="#10202b", font=font_body_bold(13),
-                      borderwidth=0, padx=24, pady=10).pack(side="left", padx=8)
+            tk.Button(buttons, text="Kapat",
+                      command=self._close_setup_ui, bg="#172a3b", fg="#c4d5de",
+                      activebackground="#29435a", font=font_body_bold(10),
+                      relief="flat", borderwidth=0, padx=20, pady=10).pack(side="left", padx=8)
 
     def _save_api_key(self):
         was_ready = self._api_key_ready
